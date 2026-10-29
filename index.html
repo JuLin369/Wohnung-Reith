@@ -87,7 +87,7 @@
   </header>
   <main>
     <section class="card" id="loginPanel">
-      <h2>🔒 Gemeinsamer Zugang</h2><p class="muted" style="font-size:12px">Version 4 · Bearbeitungsmodus für alle</p>
+      <h2>🔒 Gemeinsamer Zugang</h2><p class="muted" style="font-size:12px">Version 5 · Bearbeitungsmodus mit Fettschrift</p>
       <p class="muted">Alle verwenden denselben Zugang. Die E-Mail-Adresse wird nach der ersten Anmeldung auf diesem Gerät gemerkt. Das Passwort wird nicht in der Webseite gespeichert.</p>
       <form id="loginForm">
         <label id="emailLabel">E-Mail-Adresse<input type="email" id="email" autocomplete="username" required></label>
@@ -106,7 +106,7 @@
           <button type="button" class="danger" id="resetButton">↺ Liste zurücksetzen</button>
         </div>
         <p class="muted">Alle Änderungen und Häkchen werden automatisch bei allen angemeldeten Geräten aktualisiert.</p>
-        <div id="editGuide" class="notice" hidden><strong>Bearbeitungsmodus aktiv:</strong> Mit ↑ und ↓ kannst du Räume und Aufgaben sortieren. Über „+ Aufgabe“ oder „+ Raum“ ergänzt du Einträge. Zum Umbenennen auf „Ändern“ tippen. Änderungen gelten sofort für alle Geräte.</div>
+        <div id="editGuide" class="notice" hidden><strong>Bearbeitungsmodus aktiv:</strong> Mit ↑ und ↓ kannst du Räume und Aufgaben sortieren. Über „+ Aufgabe“ oder „+ Raum“ ergänzt du Einträge. Zum Umbenennen auf „Ändern“ tippen. Änderungen gelten sofort für alle Geräte. <strong>Fett schreiben:</strong> Setze zwei Sternchen vor und hinter den gewünschten Text, z. B. <code>**Heizung aus**</code> → <strong>Heizung aus</strong>.</div>
         <p id="editWarning" class="error" role="alert" aria-live="polite"></p>
       </section>
       <div id="sections" aria-live="off"></div>
@@ -181,6 +181,22 @@
       $('editWarning').textContent = message;
     }
     function newId(prefix) { return prefix + '-' + crypto.randomUUID(); }
+    // Text mit **doppelten Sternchen** fett darstellen. Textknoten statt innerHTML
+    // verhindern, dass eingegebener HTML-/JavaScript-Code ausgeführt wird.
+    function appendFormattedText(element,value) {
+      const source = typeof value === 'string' ? value : '';
+      const pattern = /\*\*(.+?)\*\*/g;
+      let start = 0;
+      for(const match of source.matchAll(pattern)) {
+        const index = match.index;
+        if(index > start) element.append(document.createTextNode(source.slice(start,index)));
+        const strong = document.createElement('strong');
+        strong.textContent = match[1];
+        element.append(strong);
+        start = index + match[0].length;
+      }
+      if(start < source.length) element.append(document.createTextNode(source.slice(start)));
+    }
     function freshCopy(value) { return JSON.parse(JSON.stringify(value)); }
     function cleanName(value) { return typeof value === 'string' ? value.trim().slice(0,160) : ''; }
     function makeButton(text,handler,{kind='secondary',title='',disabled=false}={}) {
@@ -222,7 +238,7 @@
         const labelGroup = document.createElement('div');
         labelGroup.className = 'roomTitle';
         const heading = document.createElement('h2');
-        heading.textContent = room.name;
+        appendFormattedText(heading,room.name);
         const roomDone = room.tasks.filter(task=>completed[task.id]===true).length;
         const count = document.createElement('span');
         count.className = 'pill noPrint';
@@ -254,7 +270,7 @@
             finally { checkbox.disabled = false; }
           });
           const text = document.createElement('span');
-          text.textContent = task.text;
+          appendFormattedText(text,task.text);
           if(task.text.includes('Sicherung 12') || task.text.includes('eingesteckt lassen')) text.style.fontWeight='700';
           label.append(checkbox,text);
           row.append(label);
