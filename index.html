@@ -1,44 +1,473 @@
 <!doctype html>
-<!-- Wohnung Reith: Version 3, 2026-10-29. Firebase-API-Key korrigiert. --><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#183d46"><title>Wohnung Reith – gemeinsame Checkliste</title><style>
-:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1c3037;background:#f3f6f5}*{box-sizing:border-box}body{margin:0}header{background:#183d46;color:white;padding:24px max(16px,calc((100vw - 800px)/2));}h1{font-size:clamp(24px,5vw,34px);margin:0 0 4px}p{margin:8px 0}main{max-width:800px;margin:auto;padding:18px 14px 65px}.card{background:white;border:1px solid #dfe8e5;border-radius:15px;padding:17px;margin:14px 0;box-shadow:0 2px 10px #20352f09}h2{margin:0 0 12px;font-size:21px}small,.muted{color:#60777b}.row{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap}button{background:#1f6370;color:white;border:0;border-radius:10px;padding:11px 15px;font-size:15px;cursor:pointer}button:disabled{opacity:.55}button.secondary{background:#e8f0ef;color:#1e454b}button.danger{background:#af3940}input[type=email],input[type=password]{width:100%;padding:13px;border:1px solid #b8c9ca;border-radius:9px;font-size:16px;margin:5px 0 13px}.item{display:flex;gap:12px;align-items:flex-start;padding:11px 3px;border-top:1px solid #e9eeee;cursor:pointer;font-size:16px}.item input{accent-color:#1d7467;width:22px;height:22px;flex:none;margin-top:1px}.item.done span{text-decoration:line-through;color:#7c8d8a}.pill{display:inline-block;background:#e5f1ea;border-radius:30px;padding:4px 9px;font-size:12px;color:#2b6c5d}.important{border-left:4px solid #d18d37;padding-left:12px;background:#fffaf2;border-radius:4px}.progress{height:12px;border-radius:20px;background:#dce7e4;overflow:hidden;margin:10px 0}.bar{background:#378775;height:100%;width:0;transition:width .2s}dialog{border:0;border-radius:18px;padding:24px;max-width:480px;width:calc(100% - 30px);box-shadow:0 20px 80px #0005}dialog::backdrop{background:#102a30a8}.error{color:#a42532}#app{display:none}#logout{background:transparent;border:1px solid #88a6ac}#status{font-size:13px;color:#b9d8dc}#loginPanel{max-width:480px;margin:30px auto}#resetConfirm{margin:12px 0;display:flex;align-items:flex-start;gap:9px}#resetConfirm input{margin-top:4px}.actions{display:flex;gap:8px;flex-wrap:wrap} @media print{body{background:white;color:black}header{background:white;color:black;padding:8px 0}main{max-width:none;padding:0}#authPanel,.actions,#status,#logout,#resetButton,.no-print{display:none!important}.card{box-shadow:none;border:1px solid #999;break-inside:avoid;margin:8px 0;padding:10px}h2{font-size:15px;margin:0 0 4px}.item{padding:5px 0;font-size:12px}.item input{appearance:none;border:1px solid #111;width:13px;height:13px}.item.done span{text-decoration:none;color:black}.progress{display:none}header p{font-size:12px}}
-</style></head><body><header><div class="row"><div><h1>Wohnung Reith</h1><p>Gemeinsame Checkliste · 52 Aufgaben · alle Geräte synchron</p></div><button id="logout" style="display:none">Abmelden</button></div><div id="status">Verbindung wird hergestellt …</div></header><main>
-<section class="card" id="loginPanel"><h2>🔒 Gemeinsamer Zugang</h2><p style="color:#1f6370;font-size:13px;font-weight:700">Version 3 · Firebase-Schlüssel korrigiert</p><p class="muted">Alle verwenden denselben Zugang. Beim ersten Anmelden auf einem neuen Gerät die E-Mail-Adresse des gemeinsamen Benutzers eingeben. Sie wird für spätere Anmeldungen auf diesem Gerät gemerkt. Das Passwort wird nicht in dieser Datei gespeichert.</p><form id="loginForm"><label id="emailLabel">E-Mail-Adresse<input type="email" id="email" autocomplete="username" required></label><label>Passwort<input type="password" id="password" autocomplete="current-password" required></label><button id="loginButton" type="submit">Anmelden</button></form><p class="error" id="loginError" role="alert" aria-live="polite"></p></section>
-<div id="app"><section class="card"><div class="row"><strong id="counter">0 von 0 erledigt</strong><span class="pill" id="percent">0 %</span></div><div class="progress"><div class="bar" id="bar"></div></div><div class="actions"><button type="button" class="secondary" onclick="window.print()">🖨️ Drucken</button><button type="button" class="danger" id="resetButton">↺ Liste zurücksetzen</button></div><p class="muted">Änderungen werden automatisch mit allen angemeldeten Geräten synchronisiert. Zum Drucken „Drucken“ verwenden.</p></section><div id="sections"></div></div>
-<dialog id="resetDialog"><h2>⚠️ Alle Aufgaben zurücksetzen?</h2><p>Dadurch werden <strong>alle bereits erledigten Aufgaben für alle Personen wieder als offen markiert</strong>. Das kann nicht rückgängig gemacht werden.</p><label id="resetConfirm"><input type="checkbox" id="confirmCheck"> Ich verstehe, dass die komplette gemeinsame Liste zurückgesetzt wird.</label><div class="actions"><button type="button" class="secondary" id="cancelReset">Abbrechen</button><button type="button" class="danger" id="confirmReset" disabled>Alle Aufgaben zurücksetzen</button></div></dialog>
-</main><script type="module">
-import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
-import {getFirestore,doc,onSnapshot,setDoc,updateDoc,deleteField} from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
-const firebaseConfig={apiKey:'AIzaSyCYHD6NxpT-NhZ22earTTiQWkVv_L92OUs',authDomain:'wohnung-reith.firebaseapp.com',projectId:'wohnung-reith',storageBucket:'wohnung-reith.firebasestorage.app',messagingSenderId:'589457609616',appId:'1:589457609616:web:b3a7153a106b2b70021915'};
-const sections={
-'Badezimmer':['Dusche entkalken – Wände, Glas und Armaturen','Waschbecken reinigen','Toilette reinigen','Klobürste reinigen','Staub wischen','Fenster putzen (bei Bedarf)','Klopapier auffüllen','Duschrinne reinigen','Wasser abstellen','Saugen und wischen','Heizung ausschalten (Sicherung 12)','Stecker der Zusatzheizung ziehen','Frische Handtücher und Fußmatte auslegen','Plissee schließen'],
-'Schlafzimmer 1 + 2':['Saugen und wischen','Staub wischen','Betten frisch beziehen','Fenster putzen (bei Bedarf)','Heizung prüfen / ausschalten (bei Bedarf)','Gardinen öffnen','Plissees schließen'],
-'Wohnzimmer':['Staub wischen','Saugen und wischen','Decke auf die Eckbank legen','Tisch abwischen','Kissen zurechtlegen','Heizung prüfen / ausschalten (bei Bedarf)','Nicht benötigte Stecker ziehen','Router und Heizungs-Gateway eingesteckt lassen!','Glastisch reinigen','Fenster putzen (bei Bedarf)','Plissees schließen'],
-'Küche':['Staub wischen','Saugen und wischen','Fenster putzen (bei Bedarf)','Kühlschrank auswischen','Backofen auswischen','Glas-Spritzschutz reinigen','Dunstabzugshaube reinigen (bei Bedarf)','Spülbecken reinigen','Müll entsorgen','Kaffeemaschine reinigen / prüfen','Lebensmittel prüfen / wegräumen','Wasserkocher entleeren','Neuen Putzlappen und neues Trockentuch hinlegen'],
-'Keller':['Waschmaschine und Trockner: Strom und Wasser abstellen','Kühlschrank / Gefrierfach ausschalten','Haltbarkeit von Lebensmitteln prüfen','Saugen (bei Bedarf)','Pfand wegbringen','Müll entsorgen'],
-'Allgemein':['Fehlende Sachen in die Gruppe schreiben']};
-const tasks=Object.entries(sections).flatMap(([room,labels])=>labels.map((label,i)=>({id:room+'-'+i,label,room})));let state={};let stopListen=()=>{};const byId=id=>document.getElementById(id), app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),ref=doc(db,'checklists','main');
-const emailSaved=localStorage.getItem('reith_shared_email');if(emailSaved){byId('email').value=emailSaved;byId('emailLabel').style.display='none';byId('email').required=false;}
-function render(){const groups=Object.entries(sections);byId('sections').replaceChildren();for(const [room,labels] of groups){const card=document.createElement('section');card.className='card';const h=document.createElement('h2');h.textContent=room;card.append(h);labels.forEach((label,i)=>{const id=room+'-'+i;const item=document.createElement('label');item.className='item'+(state[id]?' done':'');const ck=document.createElement('input');ck.type='checkbox';ck.checked=!!state[id];ck.addEventListener('change',async()=>{ck.disabled=true;try{await setDoc(ref,{completed:{[id]:ck.checked}},{merge:true});}catch(e){alert('Konnte Aufgabe nicht speichern: '+e.message)}finally{ck.disabled=false}});const span=document.createElement('span');span.textContent=label;if(label.includes('Sicherung 12')||label.includes('eingesteckt lassen'))span.style.fontWeight='700';item.append(ck,span);card.append(item)});byId('sections').append(card)}const done=tasks.filter(t=>state[t.id]).length;byId('counter').textContent=`${done} von ${tasks.length} erledigt`;const pct=Math.round(done/tasks.length*100);byId('percent').textContent=pct+' %';byId('bar').style.width=pct+'%';}
-byId('loginForm').addEventListener('submit',async e=>{e.preventDefault();byId('loginError').textContent='';const email=byId('email').value.trim(),pw=byId('password').value;byId('loginButton').disabled=true;try{await signInWithEmailAndPassword(auth,email,pw);localStorage.setItem('reith_shared_email',email);byId('password').value=''}catch(err){
- console.error('Firebase-Anmeldung fehlgeschlagen:',err);
- const code=err && err.code ? err.code : 'unbekannter-fehler';
- const hints={
-  'auth/invalid-credential':'Firebase hat die Anmeldedaten abgelehnt. Prüfe die E-Mail des Firebase-Nutzers unter Authentication → Nutzer und dessen Passwort.',
-  'auth/wrong-password':'Das Passwort für den Firebase-Nutzer stimmt nicht.',
-  'auth/user-not-found':'Unter Authentication → Nutzer gibt es keinen Benutzer mit dieser E-Mail.',
-  'auth/invalid-email':'Die E-Mail-Adresse ist ungültig.',
-  'auth/user-disabled':'Der Firebase-Nutzer ist deaktiviert.',
-  'auth/operation-not-allowed':'E-Mail/Passwort-Anmeldung unter Authentication → Anmeldemethode aktivieren.',
-  'auth/unauthorized-domain':'Unter Authentication → Einstellungen → Autorisierte Domains julin369.github.io hinzufügen.',
-  'auth/invalid-api-key':'Die Firebase-Konfiguration enthält einen falschen API-Schlüssel.',
-  'auth/app-not-authorized':'Die Firebase-App ist für diese API-Domain nicht freigegeben.',
-  'auth/network-request-failed':'Netzwerkfehler. Internetverbindung und Browser-Einstellungen prüfen.',
-  'auth/too-many-requests':'Zu viele Anmeldeversuche. Vorübergehend gesperrt; bitte nicht weiter probieren.'
- };
- byId('loginError').textContent=(hints[code]||'Anmeldung fehlgeschlagen. Bitte den Fehlercode mitteilen.')+' Fehlercode: '+code;
- byId('emailLabel').style.display='block';byId('email').required=true;
-}finally{byId('loginButton').disabled=false}});
-onAuthStateChanged(auth,user=>{stopListen();if(!user){byId('app').style.display='none';byId('loginPanel').style.display='block';byId('logout').style.display='none';byId('status').textContent='Bitte anmelden';return}byId('app').style.display='block';byId('loginPanel').style.display='none';byId('logout').style.display='block';byId('status').textContent='Synchronisierung aktiv';stopListen=onSnapshot(ref,snap=>{state=snap.exists()?snap.data().completed||{}:{};render();byId('status').textContent='✓ Synchronisiert'},err=>{byId('status').textContent='⚠ Synchronisierung fehlgeschlagen: '+(err.code||'unbekannt');console.error(err);alert('Zugriff auf die Checkliste fehlgeschlagen ('+(err.code||'unbekannter Fehler')+'). Bitte Firestore-Regeln prüfen.')})});
-byId('logout').addEventListener('click',()=>signOut(auth));const dialog=byId('resetDialog');byId('resetButton').addEventListener('click',()=>{byId('confirmCheck').checked=false;byId('confirmReset').disabled=true;dialog.showModal()});byId('confirmCheck').addEventListener('change',()=>byId('confirmReset').disabled=!byId('confirmCheck').checked);byId('cancelReset').addEventListener('click',()=>dialog.close());byId('confirmReset').addEventListener('click',async()=>{if(!byId('confirmCheck').checked)return;byId('confirmReset').disabled=true;try{await setDoc(ref,{completed:{}},{merge:false});dialog.close()}catch(e){alert('Zurücksetzen fehlgeschlagen: '+e.message)}});
-</script></body></html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#183d46">
+  <title>Wohnung Reith – gemeinsame Checkliste</title>
+  <style>
+    :root { font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif; color:#1c3037; background:#f3f6f5; }
+    * { box-sizing:border-box; }
+    body { margin:0; }
+    header { background:#183d46; color:#fff; padding:24px max(16px,calc((100vw - 840px)/2)); }
+    h1 { font-size:clamp(24px,5vw,34px); margin:0 0 5px; }
+    h2 { font-size:21px; margin:0; }
+    p { margin:8px 0; line-height:1.48; }
+    main { max-width:840px; margin:auto; padding:18px 14px 72px; }
+    .card { background:#fff; border:1px solid #dfe8e5; border-radius:15px; padding:17px; margin:14px 0; box-shadow:0 2px 10px #20352f09; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .roomTitle { display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
+    .muted, small { color:#60777b; }
+    .headNote { color:#d4e4e4; margin:0; }
+    button { background:#1f6370; color:#fff; border:0; border-radius:10px; padding:10px 14px; font-size:15px; font-family:inherit; line-height:1.35; cursor:pointer; touch-action:manipulation; }
+    button:focus-visible, input:focus-visible { outline:3px solid #e0ad4a; outline-offset:3px; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    button.secondary { background:#e8f0ef; color:#1e454b; }
+    button.danger { background:#ae3942; }
+    button.small { padding:7px 10px; font-size:13px; min-height:33px; }
+    button.iconButton { padding:6px 9px; min-width:34px; min-height:34px; }
+    input[type="email"],input[type="password"] { width:100%; padding:13px; border:1px solid #b8c9ca; border-radius:9px; font-size:16px; margin:5px 0 13px; }
+    .taskRow { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; border-top:1px solid #e9eeee; padding:10px 2px; }
+    .taskCheck { display:flex; align-items:flex-start; gap:11px; font-size:16px; cursor:pointer; flex:1; min-width:0; line-height:1.45; }
+    .taskCheck input { accent-color:#1d7467; width:22px; height:22px; flex:none; margin:1px 0 0; cursor:pointer; }
+    .taskCheck span { overflow-wrap:anywhere; }
+    .taskRow.done .taskCheck span { text-decoration:line-through; color:#7c8d8a; }
+    .editButtons { display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content:flex-end; flex:none; max-width:100%; }
+    .roomControls { display:flex; gap:5px; flex-wrap:wrap; }
+    .pill { display:inline-block; background:#e5f1ea; border-radius:30px; padding:4px 9px; font-size:12px; color:#2b6c5d; white-space:nowrap; }
+    .progress { height:12px; border-radius:20px; background:#dce7e4; overflow:hidden; margin:12px 0; }
+    .bar { background:#378775; height:100%; width:0; transition:width .2s; }
+    .actions { display:flex; gap:9px; flex-wrap:wrap; align-items:center; }
+    .error { color:#a42532; }
+    .notice { padding:12px; border:1px solid #eddda5; background:#fff9ea; border-radius:11px; margin-top:11px; }
+    .roomActions { margin-top:11px; }
+    .editGuide { margin:12px 0 4px; }
+    #app { display:none; }
+    #logout { background:transparent; border:1px solid #88a6ac; }
+    #status { font-size:13px; color:#b9d8dc; margin-top:10px; }
+    #loginPanel { max-width:480px; margin:30px auto; }
+    dialog { border:0; border-radius:18px; padding:24px; max-width:500px; width:calc(100% - 30px); box-shadow:0 20px 80px #0005; color:#1c3037; }
+    dialog::backdrop { background:#102a30a8; }
+    #resetConfirm { margin:14px 0; display:flex; align-items:flex-start; gap:9px; }
+    #resetConfirm input { margin-top:4px; width:18px; height:18px; }
+    #emptyHelp { display:none; }
+    #taskCountNote { font-size:14px; }
+    @media(max-width:560px) {
+      .card { padding:14px; }
+      .taskRow.editing { flex-direction:column; }
+      .taskRow.editing .editButtons { margin-left:33px; }
+      .roomControls { width:100%; justify-content:flex-start; }
+    }
+    @media print {
+      @page { size:A4; margin:11mm; }
+      :root,body { color:#000; background:#fff; }
+      header { background:#fff; color:#000; padding:0; }
+      header h1 { font-size:20px; }
+      .headNote { color:#555; font-size:11px; }
+      main { max-width:none; padding:0; }
+      #loginPanel,.noPrint,#logout,#status,.editButtons,.roomControls,.roomActions,#editGuide,#editWarning,#addRoomButton { display:none!important; }
+      .card { border:1px solid #aaa; border-radius:5px; box-shadow:none; padding:9px; margin:8px 0; break-inside:avoid; }
+      .card h2 { font-size:15px; }
+      .taskRow { padding:4px 0; }
+      .taskCheck { font-size:11.5px; text-decoration:none!important; color:#000!important; gap:8px; }
+      .taskCheck span { color:#000!important; text-decoration:none!important; }
+      .taskCheck input { display:none; }
+      .taskCheck::before { content:""; display:block; width:12px; height:12px; flex:none; border:1px solid #222; margin-top:1px; }
+      .pill { border:1px solid #999; background:none; color:#333; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <div><h1>Wohnung Reith</h1><p class="headNote">Gemeinsame Checkliste · für alle synchronisiert</p></div>
+      <button type="button" id="logout" style="display:none">Abmelden</button>
+    </div>
+    <div id="status" role="status" aria-live="polite">Verbindung wird hergestellt …</div>
+  </header>
+  <main>
+    <section class="card" id="loginPanel">
+      <h2>🔒 Gemeinsamer Zugang</h2><p class="muted" style="font-size:12px">Version 4 · Bearbeitungsmodus für alle</p>
+      <p class="muted">Alle verwenden denselben Zugang. Die E-Mail-Adresse wird nach der ersten Anmeldung auf diesem Gerät gemerkt. Das Passwort wird nicht in der Webseite gespeichert.</p>
+      <form id="loginForm">
+        <label id="emailLabel">E-Mail-Adresse<input type="email" id="email" autocomplete="username" required></label>
+        <label>Passwort<input type="password" id="password" autocomplete="current-password" required></label>
+        <div class="actions"><button id="loginButton" type="submit">Anmelden</button><button type="button" class="secondary" id="changeEmail" hidden>Andere E-Mail</button></div>
+      </form>
+      <p class="error" id="loginError" role="alert" aria-live="polite"></p>
+    </section>
+    <div id="app">
+      <section class="card noPrint">
+        <div class="row"><strong id="counter">0 von 0 erledigt</strong><span id="percent" class="pill">0 %</span></div>
+        <div class="progress"><div id="bar" class="bar"></div></div>
+        <div class="actions">
+          <button type="button" id="editToggle" class="secondary" aria-pressed="false">✏️ Bearbeiten</button>
+          <button type="button" class="secondary" id="printButton">🖨️ Drucken</button>
+          <button type="button" class="danger" id="resetButton">↺ Liste zurücksetzen</button>
+        </div>
+        <p class="muted">Alle Änderungen und Häkchen werden automatisch bei allen angemeldeten Geräten aktualisiert.</p>
+        <div id="editGuide" class="notice" hidden><strong>Bearbeitungsmodus aktiv:</strong> Mit ↑ und ↓ kannst du Räume und Aufgaben sortieren. Über „+ Aufgabe“ oder „+ Raum“ ergänzt du Einträge. Zum Umbenennen auf „Ändern“ tippen. Änderungen gelten sofort für alle Geräte.</div>
+        <p id="editWarning" class="error" role="alert" aria-live="polite"></p>
+      </section>
+      <div id="sections" aria-live="off"></div>
+      <div class="noPrint"><button id="addRoomButton" class="secondary" type="button" hidden>＋ Raum hinzufügen</button></div>
+    </div>
+    <dialog id="resetDialog">
+      <h2>⚠️ Gesamte Checkliste zurücksetzen?</h2>
+      <p>Dadurch werden <strong>alle bereits erledigten Aufgaben für alle Personen wieder als offen markiert</strong>. Dieser Vorgang kann nicht rückgängig gemacht werden.</p>
+      <label id="resetConfirm"><input type="checkbox" id="confirmCheck">Ich bestätige, dass sämtliche bisher erledigten Aufgaben zurückgesetzt werden.</label>
+      <div class="actions"><button type="button" class="secondary" id="cancelReset">Abbrechen</button><button type="button" class="danger" id="confirmReset" disabled>Alle Aufgaben zurücksetzen</button></div>
+    </dialog>
+  </main>
+  <script type="module">
+    import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
+    import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
+    import {getFirestore,doc,onSnapshot,setDoc,updateDoc,runTransaction} from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
+
+    // Öffentliche Web-App-Konfiguration (kein Passwort). Schutz erfolgt über Firestore-Regeln.
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCYHD6NxpT-NhZ22earTTiQWkVv_L92OUs',
+      authDomain: 'wohnung-reith.firebaseapp.com',
+      projectId: 'wohnung-reith',
+      storageBucket: 'wohnung-reith.firebasestorage.app',
+      messagingSenderId: '589457609616',
+      appId: '1:589457609616:web:b3a7153a106b2b70021915'
+    };
+
+    // Einmalige Übernahme der bisherigen Räume und stabilen Aufgaben-IDs.
+    // Bereits gesetzte Häkchen sind unter denselben IDs gespeichert und bleiben erhalten.
+    const originalSections = {
+      'Badezimmer': ['Dusche entkalken – Wände, Glas und Armaturen','Waschbecken reinigen','Toilette reinigen','Klobürste reinigen','Staub wischen','Fenster putzen (bei Bedarf)','Klopapier auffüllen','Duschrinne reinigen','Wasser abstellen','Saugen und wischen','Heizung ausschalten (Sicherung 12)','Stecker der Zusatzheizung ziehen','Frische Handtücher und Fußmatte auslegen','Plissee schließen'],
+      'Schlafzimmer 1 + 2': ['Saugen und wischen','Staub wischen','Betten frisch beziehen','Fenster putzen (bei Bedarf)','Heizung prüfen / ausschalten (bei Bedarf)','Gardinen öffnen','Plissees schließen'],
+      'Wohnzimmer': ['Staub wischen','Saugen und wischen','Decke auf die Eckbank legen','Tisch abwischen','Kissen zurechtlegen','Heizung prüfen / ausschalten (bei Bedarf)','Nicht benötigte Stecker ziehen','Router und Heizungs-Gateway eingesteckt lassen!','Glastisch reinigen','Fenster putzen (bei Bedarf)','Plissees schließen'],
+      'Küche': ['Staub wischen','Saugen und wischen','Fenster putzen (bei Bedarf)','Kühlschrank auswischen','Backofen auswischen','Glas-Spritzschutz reinigen','Dunstabzugshaube reinigen (bei Bedarf)','Spülbecken reinigen','Müll entsorgen','Kaffeemaschine reinigen / prüfen','Lebensmittel prüfen / wegräumen','Wasserkocher entleeren','Neuen Putzlappen und neues Trockentuch hinlegen'],
+      'Keller': ['Waschmaschine und Trockner: Strom und Wasser abstellen','Kühlschrank / Gefrierfach ausschalten','Haltbarkeit von Lebensmitteln prüfen','Saugen (bei Bedarf)','Pfand wegbringen','Müll entsorgen'],
+      'Allgemein': ['Fehlende Sachen in die Gruppe schreiben']
+    };
+    const initialRooms = Object.entries(originalSections).map(([name,labels]) => ({
+      id: name,
+      name,
+      tasks: labels.map((text,i) => ({id:`${name}-${i}`,text}))
+    }));
+
+    const $ = id => document.getElementById(id);
+    const firebaseApp = initializeApp(firebaseConfig);
+    const auth = getAuth(firebaseApp);
+    const db = getFirestore(firebaseApp);
+    const checklistRef = doc(db,'checklists','main'); // dieselbe Firestore-Adresse wie bisher
+    let stopListen = () => {};
+    let rooms = [];
+    let completed = {};
+    let editMode = false;
+    let busy = false;
+    let activeUser = null;
+
+    const storedEmail = localStorage.getItem('reith_shared_email');
+    if(storedEmail) {
+      $('email').value = storedEmail;
+      $('emailLabel').hidden = true;
+      $('email').required = false;
+      $('changeEmail').hidden = false;
+    }
+    $('changeEmail').addEventListener('click', () => {
+      $('emailLabel').hidden = false;
+      $('email').required = true;
+      $('changeEmail').hidden = true;
+      $('email').focus();
+    });
+    function status(message) { $('status').textContent = message; }
+    function fail(message) {
+      console.error(message);
+      $('editWarning').textContent = message;
+    }
+    function newId(prefix) { return prefix + '-' + crypto.randomUUID(); }
+    function freshCopy(value) { return JSON.parse(JSON.stringify(value)); }
+    function cleanName(value) { return typeof value === 'string' ? value.trim().slice(0,160) : ''; }
+    function makeButton(text,handler,{kind='secondary',title='',disabled=false}={}) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = text;
+      button.className = 'small ' + kind;
+      button.disabled = disabled || busy;
+      if(title) button.title = title;
+      button.addEventListener('click',handler);
+      return button;
+    }
+    function makeMoveButtons(collection,index,moveFn,name) {
+      return [
+        makeButton('↑',()=>moveFn(-1),{title:name+' nach oben',disabled:index===0}),
+        makeButton('↓',()=>moveFn(+1),{title:name+' nach unten',disabled:index===collection.length-1})
+      ];
+    }
+    function render() {
+      $('sections').replaceChildren();
+      const total = rooms.reduce((n,room)=>n+room.tasks.length,0);
+      const done = rooms.reduce((n,room)=>n+room.tasks.filter(task=>completed[task.id]===true).length,0);
+      const pct = total ? Math.round(done/total*100) : 0;
+      $('counter').textContent = `${done} von ${total} erledigt`;
+      $('percent').textContent = `${pct} %`;
+      $('bar').style.width = pct + '%';
+      $('editGuide').hidden = !editMode;
+      $('addRoomButton').hidden = !editMode;
+      $('editToggle').textContent = editMode ? '✓ Bearbeiten beenden' : '✏️ Bearbeiten';
+      $('editToggle').setAttribute('aria-pressed', String(editMode));
+      $('editToggle').disabled = busy;
+      $('addRoomButton').disabled = busy;
+
+      rooms.forEach((room,roomIndex)=>{
+        const card = document.createElement('section');
+        card.className = 'card';
+        const header = document.createElement('div');
+        header.className = 'row';
+        const labelGroup = document.createElement('div');
+        labelGroup.className = 'roomTitle';
+        const heading = document.createElement('h2');
+        heading.textContent = room.name;
+        const roomDone = room.tasks.filter(task=>completed[task.id]===true).length;
+        const count = document.createElement('span');
+        count.className = 'pill noPrint';
+        count.textContent = `${roomDone}/${room.tasks.length}`;
+        labelGroup.append(heading,count);
+        header.append(labelGroup);
+        if(editMode) {
+          const controls = document.createElement('div');
+          controls.className = 'roomControls noPrint';
+          controls.append(...makeMoveButtons(rooms,roomIndex,delta=>moveRoom(room.id,delta),'Raum'));
+          controls.append(makeButton('Ändern',()=>renameRoom(room.id,room.name),{title:'Raum umbenennen'}));
+          controls.append(makeButton('Löschen',()=>removeRoom(room.id,room.name,room.tasks.length),{kind:'danger',title:'Raum und alle enthaltenen Aufgaben löschen'}));
+          header.append(controls);
+        }
+        card.append(header);
+        room.tasks.forEach((task,taskIndex)=>{
+          const row = document.createElement('div');
+          row.className = 'taskRow'+(completed[task.id]?' done':'')+(editMode?' editing':'');
+          const label = document.createElement('label');
+          label.className = 'taskCheck';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = completed[task.id]===true;
+          checkbox.disabled = busy;
+          checkbox.addEventListener('change',async()=>{
+            checkbox.disabled = true;
+            try { await setDoc(checklistRef,{completed:{[task.id]:checkbox.checked}},{merge:true}); }
+            catch(error) { checkbox.checked = !checkbox.checked; alert('Aufgabe konnte nicht gespeichert werden: '+error.message); }
+            finally { checkbox.disabled = false; }
+          });
+          const text = document.createElement('span');
+          text.textContent = task.text;
+          if(task.text.includes('Sicherung 12') || task.text.includes('eingesteckt lassen')) text.style.fontWeight='700';
+          label.append(checkbox,text);
+          row.append(label);
+          if(editMode) {
+            const controls = document.createElement('div');
+            controls.className = 'editButtons noPrint';
+            controls.append(...makeMoveButtons(room.tasks,taskIndex,delta=>moveTask(room.id,task.id,delta),'Aufgabe'));
+            controls.append(makeButton('Ändern',()=>renameTask(room.id,task.id,task.text),{title:'Aufgabe umbenennen'}));
+            controls.append(makeButton('Löschen',()=>removeTask(room.id,task.id,task.text),{kind:'danger',title:'Aufgabe löschen'}));
+            row.append(controls);
+          }
+          card.append(row);
+        });
+        if(editMode) {
+          const actions = document.createElement('div');
+          actions.className = 'roomActions noPrint';
+          actions.append(makeButton('＋ Aufgabe hinzufügen',()=>addTask(room.id),{kind:'secondary'}));
+          card.append(actions);
+        }
+        $('sections').append(card);
+      });
+    }
+
+    // Alle Strukturänderungen erfolgen als Firestore-Transaktionen.
+    // Damit überschreiben gleichzeitige Bearbeitungen nicht versehentlich andere Änderungen.
+    async function changeRooms(mutator) {
+      if(busy || !activeUser) return;
+      busy = true;
+      $('editWarning').textContent = '';
+      render();
+      try {
+        await runTransaction(db,async transaction=>{
+          const snapshot = await transaction.get(checklistRef);
+          if(!snapshot.exists() || !Array.isArray(snapshot.data().rooms)) throw new Error('Die Aufgabenstruktur ist noch nicht eingerichtet.');
+          const next = freshCopy(snapshot.data().rooms);
+          const result = mutator(next);
+          if(result === false) return;
+          transaction.update(checklistRef,{rooms:next,schemaVersion:2});
+        });
+      } catch(error) {
+        fail('Änderung konnte nicht gespeichert werden: '+(error.code||error.message));
+      } finally {
+        busy = false;
+        render();
+      }
+    }
+    function moveWithin(list,id,delta) {
+      const i = list.findIndex(entry=>entry.id===id);
+      const nextIndex = i+delta;
+      if(i<0 || nextIndex<0 || nextIndex>=list.length) return false;
+      [list[i],list[nextIndex]] = [list[nextIndex],list[i]];
+      return true;
+    }
+    function moveRoom(id,delta) { return changeRooms(next=>moveWithin(next,id,delta)); }
+    function moveTask(roomId,id,delta) { return changeRooms(next=>{
+      const room = next.find(r=>r.id===roomId);
+      return room ? moveWithin(room.tasks,id,delta) : false;
+    }); }
+    function addRoom() {
+      const name = cleanName(prompt('Wie soll der neue Raum heißen?'));
+      if(!name) return;
+      const id = newId('raum');
+      return changeRooms(next=>{ next.push({id,name,tasks:[]}); });
+    }
+    function renameRoom(id,oldName) {
+      const response = prompt('Raum umbenennen:',oldName);
+      if(response===null) return;
+      const name = cleanName(response);
+      if(!name) return alert('Bitte einen Raumnamen eingeben.');
+      return changeRooms(next=>{
+        const room = next.find(r=>r.id===id);
+        if(!room) return false;
+        room.name = name;
+      });
+    }
+    function addTask(roomId) {
+      const text = cleanName(prompt('Neue Aufgabe:'));
+      if(!text) return;
+      const id = newId('aufgabe');
+      return changeRooms(next=>{
+        const room = next.find(r=>r.id===roomId);
+        if(!room) return false;
+        room.tasks.push({id,text});
+      });
+    }
+    function renameTask(roomId,id,oldText) {
+      const response = prompt('Aufgabe bearbeiten:',oldText);
+      if(response===null) return;
+      const text = cleanName(response);
+      if(!text) return alert('Bitte einen Aufgabentext eingeben.');
+      return changeRooms(next=>{
+        const room = next.find(r=>r.id===roomId);
+        const task = room?.tasks.find(t=>t.id===id);
+        if(!task) return false;
+        task.text = text;
+      });
+    }
+    function removeTask(roomId,id,label) {
+      if(!confirm(`Aufgabe wirklich für ALLE löschen?\n\n„${label}“\n\nDer Eintrag verschwindet von allen Geräten.`)) return;
+      return changeRooms(next=>{
+        const room = next.find(r=>r.id===roomId);
+        if(!room) return false;
+        const index = room.tasks.findIndex(t=>t.id===id);
+        if(index<0) return false;
+        room.tasks.splice(index,1);
+      });
+    }
+    function removeRoom(id,name,size) {
+      if(!confirm(`Raum „${name}“ und seine ${size} Aufgabe(n) wirklich für ALLE löschen?\n\nAlle enthaltenen Aufgaben verschwinden auf allen Geräten. Das kann nicht rückgängig gemacht werden.`)) return;
+      return changeRooms(next=>{
+        const index = next.findIndex(r=>r.id===id);
+        if(index<0) return false;
+        next.splice(index,1);
+      });
+    }
+
+    // Einmalige Migration der bestehenden, bewährten Checkliste.
+    async function ensureSchema() {
+      await runTransaction(db,async transaction=>{
+        const snapshot = await transaction.get(checklistRef);
+        const data = snapshot.exists() ? snapshot.data() : {};
+        if(Array.isArray(data.rooms)) return;
+        // merge:true lässt bisherige completed-Felder und deren Häkchen unangetastet.
+        transaction.set(checklistRef,{rooms:initialRooms,schemaVersion:2},{merge:true});
+      });
+    }
+
+    $('loginForm').addEventListener('submit',async event=>{
+      event.preventDefault();
+      $('loginError').textContent = '';
+      $('loginButton').disabled = true;
+      const email = $('email').value.trim();
+      try {
+        await signInWithEmailAndPassword(auth,email,$('password').value);
+        localStorage.setItem('reith_shared_email',email);
+        $('password').value = '';
+        $('emailLabel').hidden = true;
+        $('email').required = false;
+        $('changeEmail').hidden = false;
+      } catch(error) {
+        const hints = {
+          'auth/invalid-credential':'E-Mail-Adresse oder Passwort wurde abgelehnt.',
+          'auth/invalid-email':'Die E-Mail-Adresse ist ungültig.',
+          'auth/operation-not-allowed':'E-Mail/Passwort-Anmeldung in Firebase aktivieren.',
+          'auth/unauthorized-domain':'GitHub-Domain bei Firebase als autorisierte Domain hinterlegen.',
+          'auth/network-request-failed':'Netzwerkfehler, bitte Verbindung prüfen.',
+          'auth/too-many-requests':'Zu viele Versuche, Anmeldung vorübergehend gesperrt.'
+        };
+        $('loginError').textContent = (hints[error.code]||'Anmeldung fehlgeschlagen.') + ' Fehlercode: '+(error.code||'unbekannt');
+        $('emailLabel').hidden = false;
+        $('email').required = true;
+      } finally { $('loginButton').disabled = false; }
+    });
+    onAuthStateChanged(auth,async user=>{
+      stopListen(); stopListen=()=>{};
+      activeUser = user;
+      if(!user) {
+        rooms = []; completed = {};
+        $('app').style.display = 'none';
+        $('loginPanel').style.display = 'block';
+        $('logout').style.display = 'none';
+        status('Bitte anmelden');
+        return;
+      }
+      $('app').style.display = 'block';
+      $('loginPanel').style.display = 'none';
+      $('logout').style.display = 'block';
+      status('Lade gemeinsame Checkliste …');
+      try { await ensureSchema(); }
+      catch(error) {
+        status('⚠ Laden fehlgeschlagen: '+(error.code||error.message));
+        fail('Konnte die gemeinsame Checkliste nicht vorbereiten. Prüfe die Firestore-Regeln und Internetverbindung.');
+        return;
+      }
+      // Bei zwischenzeitlicher Abmeldung keine Listener mehr starten.
+      if(auth.currentUser?.uid !== user.uid) return;
+      stopListen = onSnapshot(checklistRef,{includeMetadataChanges:true},snapshot=>{
+        const data = snapshot.data()||{};
+        rooms = Array.isArray(data.rooms) ? data.rooms : [];
+        completed = data.completed||{};
+        render();
+        status(snapshot.metadata.fromCache ? '⚠ Offline / zwischengespeicherter Stand' :
+          snapshot.metadata.hasPendingWrites ? 'Änderungen werden gespeichert …' : '✓ Synchronisiert');
+      },error=>{
+        status('⚠ Synchronisierung fehlgeschlagen: '+(error.code||'unbekannt'));
+        fail('Datenbankzugriff fehlgeschlagen: '+error.message);
+      });
+    });
+    $('logout').addEventListener('click',()=>signOut(auth));
+    $('editToggle').addEventListener('click',()=>{if(busy)return;editMode=!editMode;render();});
+    $('addRoomButton').addEventListener('click',addRoom);
+    $('printButton').addEventListener('click',()=>window.print());
+
+    const resetDialog = $('resetDialog');
+    $('resetButton').addEventListener('click',()=>{
+      $('confirmCheck').checked = false;
+      $('confirmReset').disabled = true;
+      resetDialog.showModal();
+    });
+    $('confirmCheck').addEventListener('change',()=>{$('confirmReset').disabled=!$('confirmCheck').checked;});
+    $('cancelReset').addEventListener('click',()=>resetDialog.close());
+    $('confirmReset').addEventListener('click',async()=>{
+      if(!$('confirmCheck').checked) return;
+      $('confirmReset').disabled=true;
+      try {
+        // Nur Häkchen entfernen, niemals die Räume oder Aufgaben löschen.
+        await updateDoc(checklistRef,{completed:{}});
+        resetDialog.close();
+      } catch(error) {
+        alert('Zurücksetzen fehlgeschlagen: '+error.message);
+        $('confirmReset').disabled=false;
+      }
+    });
+  </script>
+</body>
+</html>
